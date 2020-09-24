@@ -4,7 +4,6 @@ namespace Nesk\Puphpeteer\Tests;
 
 use Nesk\Puphpeteer\Puppeteer;
 use Nesk\Rialto\Data\JsFunction;
-use Symfony\Component\Process\Process;
 use PHPUnit\Framework\ExpectationFailedException;
 use Nesk\Puphpeteer\Resources\ElementHandle;
 
@@ -14,32 +13,16 @@ class PuphpeteerTest extends TestCase
     {
         parent::setUp();
 
-        $this->host = '127.0.0.1:8089';
-        $this->url = "http://{$this->host}";
-        $this->serverDir = __DIR__.'/resources';
+        // Serve the content of the resources to test these.
+        $this->serveResources();
 
-        $this->servingProcess = new Process(['php', '-S', $this->host, '-t', $this->serverDir]);
-        $this->servingProcess->start();
-
-        // Chrome doesn't support Linux sandbox on many CI environments
-        // See: https://github.com/GoogleChrome/puppeteer/blob/master/docs/troubleshooting.md#chrome-headless-fails-due-to-sandbox-issues
-        $this->browserOptions = ['args' => ['--no-sandbox', '--disable-setuid-sandbox']];
-
-        if ($this->canPopulateProperty('browser')) {
-            $this->browser = (new Puppeteer)->launch($this->browserOptions);
-        }
+        // Launch the browser to run tests on.
+        $this->launchBrowser();
     }
 
-    public function tearDown(): void
-    {
-        if (isset($this->browser)) {
-            $this->browser->close();
-        }
-
-        $this->servingProcess->stop(0);
-    }
-
-    /** @test */
+    /**
+     * @test
+     */
     public function can_browse_website()
     {
         $response = $this->browser->newPage()->goto($this->url);
@@ -85,7 +68,9 @@ class PuphpeteerTest extends TestCase
         }
     }
 
-    /** @test */
+    /**
+     * @test
+     */
     public function can_evaluate_a_selection()
     {
         $page = $this->browser->newPage();
@@ -102,7 +87,9 @@ class PuphpeteerTest extends TestCase
         $this->assertEquals(1, $titleCount);
     }
 
-    /** @test */
+    /**
+     * @test
+     */
     public function can_intercept_requests()
     {
         $page = $this->browser->newPage();
@@ -152,7 +139,7 @@ class PuphpeteerTest extends TestCase
         if (empty($incompleteResources)) return;
 
         $incompleteText = "The following resources have not been tested properly, probably"
-            ." for good reasons but you might want to have a look:";
+            ." for good reasons but you might want to have a look:\n";
 
         foreach ($incompleteResources as $name => $resource) {
             if ($resource instanceof UntestableResource) {
